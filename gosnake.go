@@ -39,9 +39,11 @@ const (
 
 var (
 	snake   []Coord
-	dir     int     = DirUp
-	running bool    = true
-	counter Counter = Counter{hit: 6, current: 0}
+	food    map[Coord]bool = make(map[Coord]bool)
+	grow    map[Coord]bool = make(map[Coord]bool)
+	dir     int            = DirUp
+	running bool           = true
+	counter Counter        = Counter{hit: 6, current: 0}
 )
 
 func main() {
@@ -66,6 +68,7 @@ func main() {
 
 	initGL()
 	initSnake()
+	initFood()
 
 	for running && glfw.WindowParam(glfw.Opened) == 1 {
 		update()
@@ -125,31 +128,67 @@ func initSnake() {
 	dir = DirUp
 }
 
+func initFood() {
+	food[Coord{x: 3, y: 3}] = true
+	food[Coord{x: 7, y: 3}] = true
+	food[Coord{x: 3, y: 5}] = true
+	food[Coord{x: 6, y: 3}] = true
+}
+
 func update() {
 
 	if hit := counter.Tick(); !hit {
 		return
 	}
 
-	last := snake[len(snake)-1]
+	head := snake[len(snake)-1]
+	tail := snake[0]
 
-	switch dir {
-	case DirUp:
-		snake = append(snake, Coord{x: last.x, y: last.y + 1})
-	case DirDown:
-		snake = append(snake, Coord{x: last.x, y: last.y - 1})
-	case DirLeft:
-		snake = append(snake, Coord{x: last.x - 1, y: last.y})
-	case DirRight:
-		snake = append(snake, Coord{x: last.x + 1, y: last.y})
+	// Eat food
+	if _, present := food[head]; present {
+		delete(food, head)
+		grow[tail] = true
 	}
 
-	snake = snake[1:]
+	// Move snake
+	switch dir {
+	case DirUp:
+		snake = append(snake, Coord{x: head.x, y: head.y + 1})
+	case DirDown:
+		snake = append(snake, Coord{x: head.x, y: head.y - 1})
+	case DirLeft:
+		snake = append(snake, Coord{x: head.x - 1, y: head.y})
+	case DirRight:
+		snake = append(snake, Coord{x: head.x + 1, y: head.y})
+	}
+
+	if _, present := grow[tail]; present {
+		delete(grow, tail)
+	} else {
+		snake = snake[1:]
+	}
 }
 
 func drawScene() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
+	// Food
+	for coord, _ := range food {
+		gl.LoadIdentity()
+		gl.Scalef(0.05, 0.05, 1)
+		gl.Translatef(float32(coord.x)-5, float32(coord.y)-5, -1)
+
+		gl.Begin(gl.QUADS)
+		gl.Color3f(0.5, float32(coord.x)/10, float32(coord.y)/10)
+		gl.Vertex3f(0.25, 0.75, 0)
+		gl.Vertex3f(0.75, 0.75, 0)
+		gl.Color3f(0.3, float32(coord.x)/10-0.2, float32(coord.y)/10-0.2)
+		gl.Vertex3f(0.75, 0.25, 0)
+		gl.Vertex3f(0.25, 0.25, 0)
+		gl.End()
+	}
+
+	//Snake
 	for _, coord := range snake {
 		gl.LoadIdentity()
 		gl.Scalef(0.05, 0.05, 1)
