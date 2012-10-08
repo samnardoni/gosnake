@@ -24,6 +24,35 @@ type Coord struct {
 	x, y int
 }
 
+type Snake struct {
+	coords []Coord
+	grow   bool
+}
+
+func (s *Snake) Grow() {
+	s.grow = true
+}
+
+func (s *Snake) Move(dir int) {
+	head := s.coords[len(s.coords)-1]
+
+	switch dir {
+	case DirUp:
+		s.coords = append(s.coords, Coord{x: head.x, y: head.y + 1})
+	case DirDown:
+		s.coords = append(s.coords, Coord{x: head.x, y: head.y - 1})
+	case DirLeft:
+		s.coords = append(s.coords, Coord{x: head.x - 1, y: head.y})
+	case DirRight:
+		s.coords = append(s.coords, Coord{x: head.x + 1, y: head.y})
+	}
+	if s.grow {
+		s.grow = false
+	} else {
+		s.coords = s.coords[1:]
+	}
+}
+
 const (
 	Title  = "Snake"
 	Width  = 480
@@ -38,7 +67,7 @@ const (
 )
 
 var (
-	snake   []Coord
+	snake   Snake
 	food    map[Coord]bool = make(map[Coord]bool)
 	grow    map[Coord]bool = make(map[Coord]bool)
 	dir     int            = DirUp
@@ -119,12 +148,12 @@ func initGL() {
 }
 
 func initSnake() {
-	snake = append(snake, Coord{x: 1, y: 2})
-	snake = append(snake, Coord{x: 2, y: 2})
-	snake = append(snake, Coord{x: 2, y: 3})
-	snake = append(snake, Coord{x: 2, y: 4})
-	snake = append(snake, Coord{x: 3, y: 4})
-	snake = append(snake, Coord{x: 4, y: 4})
+	snake.coords = append(snake.coords, Coord{x: 1, y: 2})
+	snake.coords = append(snake.coords, Coord{x: 2, y: 2})
+	snake.coords = append(snake.coords, Coord{x: 2, y: 3})
+	snake.coords = append(snake.coords, Coord{x: 2, y: 4})
+	snake.coords = append(snake.coords, Coord{x: 3, y: 4})
+	snake.coords = append(snake.coords, Coord{x: 4, y: 4})
 	dir = DirUp
 }
 
@@ -141,8 +170,8 @@ func update() {
 		return
 	}
 
-	head := snake[len(snake)-1]
-	tail := snake[0]
+	head := snake.coords[len(snake.coords)-1]
+	tail := snake.coords[0]
 
 	// Eat food
 	if _, present := food[head]; present {
@@ -151,21 +180,10 @@ func update() {
 	}
 
 	// Move snake
-	switch dir {
-	case DirUp:
-		snake = append(snake, Coord{x: head.x, y: head.y + 1})
-	case DirDown:
-		snake = append(snake, Coord{x: head.x, y: head.y - 1})
-	case DirLeft:
-		snake = append(snake, Coord{x: head.x - 1, y: head.y})
-	case DirRight:
-		snake = append(snake, Coord{x: head.x + 1, y: head.y})
-	}
+	snake.Move(dir)
 
 	if _, present := grow[tail]; present {
-		delete(grow, tail)
-	} else {
-		snake = snake[1:]
+		snake.Grow()
 	}
 }
 
@@ -189,7 +207,7 @@ func drawScene() {
 	}
 
 	//Snake
-	for _, coord := range snake {
+	for _, coord := range snake.coords {
 		gl.LoadIdentity()
 		gl.Scalef(0.05, 0.05, 1)
 		gl.Translatef(float32(coord.x)-5, float32(coord.y)-5, -1)
